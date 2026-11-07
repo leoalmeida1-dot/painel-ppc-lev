@@ -4,105 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PPC Lev — Painel de Gerentes Comerciais</title>
-<style>
-:root{
-  --lev-purple:#5B2D8E; --lev-purple-d:#3E1E63; --lev-magenta:#8E2D5B; --lev-red:#A63A50;
-  --gem:#E8913D; --copper:#B87333; --green:#2e7d4f;
-  --bg:#F5F3F9; --card:#fff; --line:#E6E1EF; --txt:#241A33; --mut:#7A7186;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;display:flex;min-height:100vh}
-aside{width:230px;background:linear-gradient(180deg,var(--lev-purple-d),var(--lev-purple) 60%,var(--lev-magenta));color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.15)}
-.logo img{height:36px;background:#fff;border-radius:8px;padding:4px 8px}
-.logo b{display:block;margin-top:8px;font-size:15px}
-.logo span{font-size:10.5px;color:#D8CCE8;display:block;margin-top:2px}
-nav{padding:12px 10px;flex:1}
-nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:#D8CCE8;padding:11px 12px;border-radius:9px;cursor:pointer;font-size:13.5px;margin-bottom:3px}
-nav button:hover{background:rgba(255,255,255,.10);color:#fff}
-nav button.on{background:var(--gem);color:#2A1A08;font-weight:700}
-nav .ico{width:20px;text-align:center}
-.sync{padding:12px 14px;border-top:1px solid rgba(255,255,255,.15);font-size:11px;color:#D8CCE8;line-height:1.6}
-.sync b{color:#FFD9A6}
-main{flex:1;min-width:0;display:flex;flex-direction:column}
-header{background:#fff;border-bottom:1px solid var(--line);padding:16px 24px}
-header h1{font-size:18px;color:var(--lev-purple-d)}
-header .sub{color:var(--mut);font-size:12px;margin-top:3px}
-.hbar{display:flex;gap:9px;margin-top:12px;flex-wrap:wrap;align-items:center}
-.hbar .f{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
-.hbar label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
-.hbar select{border:0;background:none;font-size:13px;color:var(--txt);outline:none;cursor:pointer}
-.hbar .tag{margin-left:auto;font-size:11px;color:var(--lev-purple);background:#F3EDFA;border:1px solid #E0D4F0;padding:4px 11px;border-radius:16px;font-weight:600}
-.content{padding:18px 24px 44px;flex:1}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:11px;margin-bottom:16px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative;overflow:hidden}
-.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--lev-purple)}
-.kpi.o::before{background:var(--gem)} .kpi.r::before{background:var(--lev-red)} .kpi.g::before{background:var(--green)}
-.kpi .t{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
-.kpi .v{font-size:21px;font-weight:700;color:var(--lev-purple-d);margin-top:4px}
-.kpi .d{font-size:11px;color:var(--mut);margin-top:2px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
-@media(max-width:1100px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
-.panel h3{font-size:13.5px;color:var(--lev-purple-d)}
-.panel .ps{font-size:11.5px;color:var(--mut);margin:3px 0 12px}
-.rule{background:linear-gradient(90deg,#F3EDFA,#FDF4EA);border:1px solid #E0D4F0;border-radius:12px;padding:10px 14px;font-size:12px;color:#4A3A63;margin-bottom:14px;line-height:1.65}
-.rule b{color:var(--lev-purple)}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);text-align:left;padding:6px 8px;border-bottom:2px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
-th:hover{color:var(--lev-purple)}
-td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
-tr:hover{background:#F8F5FC}
-td b{color:var(--lev-purple-d)}
-.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.bdg{display:inline-block;padding:2px 9px;border-radius:14px;font-size:10.5px;font-weight:700;white-space:nowrap}
-.nvD{background:#F6E7EA;color:var(--lev-red)}.nvC{background:#F3E9FA;color:var(--lev-purple)}.nvB{background:#EDE4FA;color:#4A2E7E;border:1px solid #D8C8F0}
-.fA1{background:#E2F2E8;color:var(--green)}.fB1,.fB2,.fB3{background:#EDE4FA;color:#4A2E7E}
-.fC1,.fC2,.fC3{background:#FDF0DD;color:#9A6210}.fD1,.fD2,.fD3{background:#F6E7EA;color:var(--lev-red)}
-.fNa{background:#EEEBF3;color:#A79DB8}
-.crit{display:inline-block;min-width:24px;height:22px;line-height:22px;text-align:center;border-radius:6px;font-size:10.5px;font-weight:700;margin-right:3px;padding:0 3px}
-.cA{background:#E2F2E8;color:var(--green)}.cB{background:#EDE4FA;color:#4A2E7E}.cC{background:#FDF0DD;color:#9A6210}.cD{background:#F6E7EA;color:var(--lev-red)}.cN{background:#EEEBF3;color:#A79DB8}
-.gap{font-size:11px;color:var(--lev-red);font-weight:600}
-.gap.ok{color:var(--green)}
-.bar{height:6px;border-radius:4px;background:#ECE6F4;position:relative;min-width:56px}
-.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,var(--lev-purple),var(--lev-magenta))}
-.bar.hot i{background:linear-gradient(90deg,var(--lev-red),var(--gem))}
-.mini{font-size:11px;color:var(--mut);line-height:1.5}
-.hl{background:#FBF6EC}
-.ramp{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:12px}
-.ramp.ativa{background:#FDF0DD;color:#9A6210}.ramp.vencida{background:#F6E7EA;color:var(--lev-red)}.ramp.na{background:#EEEBF3;color:#A79DB8}
-.bok{background:#E2F2E8;color:var(--green);font-weight:700}
-.bno{background:#F6E7EA;color:var(--lev-red);font-weight:700}
-.bind{background:#FDF0DD;color:#9A6210;font-weight:700}
-footer{padding:12px 24px;font-size:11px;color:var(--mut);border-top:1px solid var(--line);background:var(--card);line-height:1.6}
-.sort{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.sort button{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:5px 13px;font-size:12px;cursor:pointer;color:var(--txt)}
-.sort button.on{background:var(--lev-purple);color:#fff;border-color:var(--lev-purple);font-weight:600}
-.btab td{padding:9px 8px}
-.blin{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0}
-.blin .st{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
-.st.ok{background:#E2F2E8;color:var(--green)}.st.no{background:#F6E7EA;color:var(--lev-red)}.st.id{background:#FDF0DD;color:#9A6210}
-</style>
+<link rel="stylesheet" href="style.css">
+
 </head>
 <body>
 <aside>
-  <div class="logo"><b>PPC Lev</b><span>Gerentes Comerciais</span></div>
+  <div class="logo"><img id="logoImg" alt="Lev"><b>PPC Lev</b><span>Gerentes Comerciais</span></div>
   <nav>
     <button class="on" data-v="painel" onclick="go('painel')"><span class="ico">▦</span>Painel Geral</button>
     <button data-v="bonus" onclick="go('bonus')"><span class="ico">🏅</span>Acompanhamento de Bônus</button>
+    <button data-v="dinamica" onclick="go('dinamica')"><span class="ico">⚡</span>Acompanhamento de Bônus c/ Hierarquia Dinâmica</button>
+    <button data-v="gc" onclick="go('gc')"><span class="ico">🎯</span>Análise por GC</button>
   </nav>
-  <div class="sync">Sincronização:<br><b>CRC do Ploomes · sync diária</b></div>
+  <div class="sync" id="syncBox">Sincronização:<br><b id="syncInfo">—</b></div>
 </aside>
+<nav class="mnav" id="mnav">
+  <button class="on" data-v="painel" onclick="go('painel')"><span class="ico">▦</span><span class="tx">Painel</span></button>
+  <button data-v="bonus" onclick="go('bonus')"><span class="ico">🏅</span><span class="tx">Bônus</span></button>
+  <button data-v="dinamica" onclick="go('dinamica')"><span class="ico">⚡</span><span class="tx">Hierarquia</span></button>
+  <button data-v="gc" onclick="go('gc')"><span class="ico">🎯</span><span class="tx">Por GC</span></button>
+</nav>
 <main>
   <header>
     <h1 id="vtitle"></h1>
     <div class="sub" id="vsub"></div>
+    <button class="fbtn" id="fbtn" onclick="toggleFiltros()">
+      <span>⚙︎</span><span>Filtros</span><span class="n" id="fcount">0</span>
+    </button>
     <div class="hbar" id="filtros"></div>
   </header>
   <div class="content" id="view"></div>
   <footer id="foot"></footer>
 </main>
+
 <script src="data.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>
