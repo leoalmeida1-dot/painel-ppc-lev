@@ -263,3 +263,17 @@ footer{padding:12px 24px;font-size:11px;color:var(--mut);border-top:1px solid va
   .mnav button{font-size:8px}
   .kpi .v{font-size:17px}
 }
+
+/* teto remuneratório */
+.teto{margin-top:8px;padding:7px 9px;border-radius:8px;font-size:10.5px;line-height:1.45;border:1px solid}
+.teto.ok{background:#F1F8F3;border-color:#CFE7D7;color:#1F6B41}
+.teto.cut{background:#FDF3E4;border-color:#F2DDB8;color:#8A5510}
+.teto.full{background:#F6E7EA;border-color:#EBCFD5;color:var(--lev-red)}
+.teto b{font-weight:800}
+.teto .calc{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:10px;opacity:.92}
+.teto .calc i{font-style:normal;font-weight:700}
+.teto .barra{height:5px;border-radius:3px;background:rgba(0,0,0,.09);margin-top:5px;position:relative;overflow:hidden}
+.teto .barra i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:currentColor;opacity:.75}
+.bdg.bef{background:#F1F8F3;color:#1F6B41;font-weight:800}
+.bdg.bef0{background:#F6E7EA;color:var(--lev-red);font-weight:800}
+.bdg.bcut{background:#FDF3E4;color:#8A5510;font-weight:800}

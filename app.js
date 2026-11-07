@@ -192,17 +192,29 @@ function viewBonus(){
   const ok = list.filter(g=>bonusOk(g.bonus)===true);
   const no = list.filter(g=>bonusNaoOk(g.bonus));
   const ind = list.filter(g=>{const r=bonusOk(g.bonus); return r===null;});
+  const recebe = g=>(g.bonus.bonus_efetivo||0) > 0;
+  /* três grupos dentro de quem atingiu o critério */
+  const pagos   = ok.filter(recebe);                                  // recebe o bônus
+  const cortados= ok.filter(g=>!recebe(g));                            // atingiu, mas o teto zerou
+  const reduzidos = pagos.filter(g=>(g.bonus.bonus_efetivo||0) < (g.bonus.bonus_nominal||0));
+  const totNom = ok.reduce((a,g)=>a+(g.bonus.bonus_nominal||0),0);
+  const totEf  = ok.reduce((a,g)=>a+(g.bonus.bonus_efetivo||0),0);
   return `
-  <div class="rule"><b>Bônus de performance — FECHAMENTO DE OUTUBRO/2026</b> (mês anterior) — critérios por nível, conforme a Política de Progressão: <b>D</b> rampagem (meta do mês) ou critérios do C se rampagem vencida · <b>C</b> crescimento de PAC + produção mínima 15% + churn &lt;20% · <b>B</b> PAC ≥ 50 <i>ou</i> (PAC ≥ 45 <i>e</i> Score MB em qualquer verde B1/B2/B3) · <b>A</b> PAC ≥ 70. Valores: D/C = R$ 1.000 · B/A = R$ 500.</div>
+  <div class="rule"><b>Bônus de performance — fechamento de outubro/2026.</b> Critérios por nível: <b>D</b> rampagem do mês · <b>C</b> crescimento ≥15% em PAC e CRC + churn &lt;20% · <b>B</b> PAC ≥ 50 <i>ou</i> (PAC ≥ 45 <i>e</i> Score MB verde) · <b>A</b> PAC ≥ 70.
+  <br><b>Teto remuneratório:</b> quem entrou antes do PPC pode ter salário acima da mensalidade prevista. O bônus só é pago até a soma <i>salário + bônus</i> caber no <b>teto do nível</b> — D R$ 4.000 · C R$ 4.500 · B R$ 5.000 · A R$ 6.000.</div>
   <div class="kpis">
-    <div class="kpi g"><div class="t">Atingiram</div><div class="v" style="color:var(--green)">${ok.length}</div><div class="d">bônus no mês</div></div>
+    <div class="kpi g"><div class="t">Recebem bônus</div><div class="v" style="color:var(--green)">${pagos.length}</div><div class="d">${reduzidos.length} com valor reduzido</div></div>
+    <div class="kpi o"><div class="t">Atingiram, mas teto zerou</div><div class="v" style="color:var(--gem)">${cortados.length}</div><div class="d">salário já no teto do nível</div></div>
     <div class="kpi r"><div class="t">Não atingiram</div><div class="v" style="color:var(--lev-red)">${no.length}</div><div class="d">critério pendente</div></div>
-    <div class="kpi o"><div class="t">Sem dados suficientes</div><div class="v">${ind.length}</div><div class="d">criterios abertos</div></div>
-    <div class="kpi"><div class="t">No filtro</div><div class="v">${list.length}</div><div class="d">GCs</div></div>
+    <div class="kpi"><div class="t">Folha de bônus</div><div class="v" style="font-size:16px">R$ ${fmtN(totEf)}</div><div class="d">nominal seria R$ ${fmtN(totNom)}</div></div>
   </div>
-  <div class="panel"><h3>✅ Atingiram o bônus</h3><div class="ps">todos os critérios do nível cumpridos no mês</div>
+  <div class="panel"><h3>💰 Recebem o bônus</h3><div class="ps">critério cumprido e valor já ajustado ao teto do nível</div>
     <table class="btab"><tbody>
-    ${ok.map(g=>bonusRow(g,"ok")).join("")||`<tr><td class="mini">Ninguém no filtro.</td></tr>`}
+    ${pagos.map(g=>bonusRow(g,"ok")).join("")||`<tr><td class="mini">Ninguém no filtro.</td></tr>`}
+    </tbody></table></div>
+  <div class="panel" style="margin-top:14px"><h3>⚠️ Atingiram o critério, mas o teto zerou</h3><div class="ps">o salário atual já consome todo o teto da categoria — não sobra espaço para o bônus</div>
+    <table class="btab"><tbody>
+    ${cortados.map(g=>bonusRow(g,"id")).join("")||`<tr><td class="mini">Ninguém no filtro.</td></tr>`}
     </tbody></table></div>
   <div class="panel" style="margin-top:14px"><h3>⛔ Não atingiram</h3><div class="ps">critério em vermelho = pendência do mês</div>
     <table class="btab"><tbody>
@@ -211,6 +223,33 @@ function viewBonus(){
   ${ind.length?`<div class="panel" style="margin-top:14px"><h3>⏳ Critérios em aberto</h3><div class="ps">dependem de dados que a apuração ainda não fechou</div>
     <table class="btab"><tbody>${ind.map(g=>bonusRow(g,"id")).join("")}</tbody></table></div>`:""}`;
 }
+
+function bcls(b, cls){
+  if(b && b.atingiu && b.bonus_efetivo===0) return "bno";
+  if(b && b.atingiu && b.bonus_efetivo>0 && b.bonus_efetivo<b.bonus_nominal) return "bcut";
+  if(b && b.atingiu) return "bok";
+  return cls==="ok"?"bok":cls==="no"?"bno":"bind";
+}
+function tetoHTML(b){
+  if(!b || b.teto==null) return "";
+  if(b.salario==null){
+    return `<div class="teto ok"><b>Sem salário cadastrado</b> — bônus integral de R$ ${fmtN(b.bonus_nominal)} (teto ${b.final||""} R$ ${fmtN(b.teto)})</div>`;
+  }
+  const sal = b.salario, teto = b.teto, nom = b.bonus_nominal, ef = b.bonus_efetivo;
+  const cls = !b.atingiu ? "ok" : (ef===0 ? "full" : ef<nom ? "cut" : "ok");
+  const ocup = Math.min(100, (sal/teto)*100);
+  const rot = b.atingiu
+    ? (ef===0 ? "salário já consome o teto" : ef<nom ? "bônus reduzido pelo teto" : "cabe no teto")
+    : "critério não cumprido";
+  return `<div class="teto ${cls}">
+    <b>Remuneração:</b> salário R$ ${fmtN(sal)} · teto do nível R$ ${fmtN(teto)}
+    ${b.atingiu?` → <b>bônus R$ ${fmtN(ef)}</b>${ef<nom?` <span style="opacity:.8">(nominal ${fmtN(nom)})</span>`:""}`:""}
+    <div class="calc"><span>${rot}</span></div>
+    <div class="barra"><i style="width:${ocup}%"></i></div>
+  </div>`;
+}
+function fmtN(v){ return v==null?"—":Number(v).toLocaleString("pt-BR",{maximumFractionDigits:0}); }
+
 function bonusRow(g, cls){
   const linhas = g.bonus.linhas.map(l=>{
     const st = l[3]===true?"ok":l[3]===false?"no":"id";
@@ -220,8 +259,8 @@ function bonusRow(g, cls){
   return `<tr><td style="width:26%">
     <b>${esc(g.nome)}</b> <img src="${ASSETS["esc_"+g.final.toLowerCase()+"_circ"]||""}" style="width:20px;height:20px;vertical-align:-5px;border-radius:50%">
     <div class="mini">${esc(g.cargo)} · nível ${g.final} · alvo ${g.bonus.alvo}</div></td>
-    <td>${linhas}</td>
-    <td class="num"><span class="bdg ${cls==="ok"?"bok":cls==="no"?"bno":"bind"}">${g.bonus.bonus}</span></td></tr>`;
+    <td>${linhas}${tetoHTML(g.bonus)}</td>
+    <td class="num"><span class="bdg ${bcls(g.bonus,cls)}">${g.bonus.bonus_efetivo!=null?(g.bonus.bonus_efetivo>0?"R$ "+fmtN(g.bonus.bonus_efetivo):"R$ 0"):g.bonus.bonus}</span></td></tr>`;
 }
 
 /* ---------- VIEW: BÔNUS DINÂMICO ---------- */
@@ -270,8 +309,8 @@ function dinRow(g, cls){
   return `<tr><td style="width:26%">
     <b>${esc(g.nome)}</b> <img src="${ASSETS["esc_"+g.final.toLowerCase()+"_circ"]||""}" style="width:20px;height:20px;vertical-align:-5px;border-radius:50%">
     <div class="mini">${esc(g.cargo)} · nível ${g.final} · alvo ${bd.alvo||bruto.alvo||"—"}</div></td>
-    <td>${linhas}${ajuste}</td>
-    <td class="num"><span class="bdg ${cls==="ok"?"bok":cls==="no"?"bno":"bind"}">${bd.bonus||bruto.bonus||""}</span></td></tr>`;
+    <td>${linhas}${ajuste}${tetoHTML(bd)}</td>
+    <td class="num"><span class="bdg ${bcls(bd,cls)}">${bd.bonus_efetivo!=null?(bd.bonus_efetivo>0?"R$ "+fmtN(bd.bonus_efetivo):"R$ 0"):(bd.bonus||bruto.bonus||"")}</span></td></tr>`;
 }
 
 /* ---------- VIEW: ANÁLISE POR GC ---------- */
