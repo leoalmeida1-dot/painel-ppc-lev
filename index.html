@@ -11,27 +11,56 @@
 <aside>
   <div class="logo"><img id="logoImg" alt="Lev"><b>PPC Lev</b><span>Gerentes Comerciais</span></div>
   <nav>
-    <button class="on" data-v="painel" onclick="go('painel')"><span class="ico">▦</span>Painel Geral</button>
-    <button data-v="bonus" onclick="go('bonus')"><span class="ico">🏅</span>Acompanhamento de Bônus</button>
-    <button data-v="dinamica" onclick="go('dinamica')"><span class="ico">⚡</span>Acompanhamento de Bônus c/ Hierarquia Dinâmica</button>
-    <button data-v="gc" onclick="go('gc')"><span class="ico">🎯</span>Análise por GC</button>
+    <button class="on" data-v="painel" onclick="go('painel')"><span class="ico">▦</span><span class="sbtxt">Painel Geral</span></button>
+    <button data-v="bonus" onclick="go('bonus')"><span class="ico">🏅</span><span class="sbtxt">Acompanhamento de Bônus</span></button>
+    <button data-v="gc" onclick="go('gc')"><span class="ico">🎯</span><span class="sbtxt">Análise por GC</span></button>
+    <button data-v="dir" onclick="go('dir')"><span class="ico">🧭</span><span class="sbtxt">Direcionamentos</span></button>
+    <button data-v="pag" onclick="go('pag')"><span class="ico">💰</span><span class="sbtxt">Relatório de Pagamentos</span></button>
+    <button data-v="chat" onclick="go('chat')"><span class="ico">💬</span><span class="sbtxt">Perguntar</span></button>
+    <button data-v="sug" onclick="go('sug')"><span class="ico">💡</span><span class="sbtxt">Sugerir melhoria</span></button>
+    <button data-v="adm" onclick="go('adm')"><span class="ico">🔐</span><span class="sbtxt">Administração</span></button>
   </nav>
   <div class="sync" id="syncBox">Sincronização:<br><b id="syncInfo">—</b></div>
+  <button id="sbBtn" onclick="toggleSidebar()" title="Recolher menu">
+    <span class="arw">‹</span><span class="sbtxt">Recolher menu</span>
+  </button>
 </aside>
 <nav class="mnav" id="mnav">
   <button class="on" data-v="painel" onclick="go('painel')"><span class="ico">▦</span><span class="tx">Painel</span></button>
   <button data-v="bonus" onclick="go('bonus')"><span class="ico">🏅</span><span class="tx">Bônus</span></button>
-  <button data-v="dinamica" onclick="go('dinamica')"><span class="ico">⚡</span><span class="tx">Hierarquia</span></button>
   <button data-v="gc" onclick="go('gc')"><span class="ico">🎯</span><span class="tx">Por GC</span></button>
+  <button data-v="chat" onclick="go('chat')"><span class="ico">💬</span><span class="tx">Perguntar</span></button>
+  <button onclick="abrirMais()"><span class="ico">⋯</span><span class="tx">Mais</span></button>
 </nav>
+<div id="maisSheet" style="display:none;position:fixed;inset:0;z-index:70;background:rgba(36,26,51,.45)" onclick="if(event.target===this)fecharMais()">
+  <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))">
+    <div style="width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="fecharMais();go('dir')" class="maisbtn">🧭 Direcionamentos</button>
+      <button onclick="fecharMais();go('pag')" class="maisbtn">💰 Pagamentos</button>
+      <button onclick="fecharMais();go('sug')" class="maisbtn">💡 Sugerir melhoria</button>
+      <button onclick="fecharMais();go('adm')" class="maisbtn">🔐 Administração</button>
+    </div>
+  </div>
+</div>
 <main>
   <header>
     <h1 id="vtitle"></h1>
-    <div class="sub" id="vsub"></div>
-    <button class="fbtn" id="fbtn" onclick="toggleFiltros()">
-      <span>⚙︎</span><span>Filtros</span><span class="n" id="fcount">0</span>
-    </button>
-    <div class="hbar" id="filtros"></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div class="sub" id="vsub" style="flex:1;min-width:220px"></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px">
+        <span style="font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Perfil</span>
+        <select id="selPerfil" onchange="setPerfilAtivo(this.value)" style="border:0;background:none;font-size:12px;font-weight:700;color:var(--lev-purple-d);cursor:pointer;outline:none;font-family:inherit">
+          ${PERFIS.lista.map(pf=>`<option value="${pf.id}" ${pf.id===PERFIS.ativo?"selected":""}>${pf.nm}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="fbar-top" id="fbarTop">
+      <button class="ftoggle" onclick="toggleFiltros()" title="Mostrar/ocultar filtros">
+        <span class="arw">▾</span><span>Filtros</span><span class="fbadge" id="fcount">0</span>
+      </button>
+      <div class="hbar" id="filtros"></div>
+    </div>
   </header>
   <div class="content" id="view"></div>
   <footer id="foot"></footer>
