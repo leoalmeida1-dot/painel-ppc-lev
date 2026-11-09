@@ -1139,6 +1139,13 @@ window.abrirMais = abrirMais; window.fecharMais = fecharMais;
 /* restaura o estado da sidebar salvo */
 (function(){
   try{ if(localStorage.getItem("ppc_sb")==="1") document.body.classList.add("sb-min"); }catch(e){}
+  /* no celular, a barra de filtros começa recolhida */
+  if(window.matchMedia && window.matchMedia("(max-width:820px)").matches){
+    document.addEventListener("DOMContentLoaded", function(){
+      const f = document.getElementById("fbarTop");
+      if(f) f.classList.add("recolhida");
+    });
+  }
 })();
 
 /* ============ NÚCLEO: TÍTULOS, FILTROS E RENDER ============ */
