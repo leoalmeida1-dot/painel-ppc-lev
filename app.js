@@ -1383,10 +1383,10 @@ function dirTabela(list){
 /* ---- VISÃO KANBAN ---- */
 function dirKanban(list){
   const cols = ORDEM_CENARIO.filter(cen => list.some(g=>g._alav===cen));
-  return `<div style="display:flex;gap:11px;overflow-x:auto;padding-bottom:10px;align-items:flex-start">
+  return `<div class="kboard" style="display:flex;gap:11px;overflow-x:auto;padding-bottom:12px;align-items:flex-start;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">
     ${cols.map(cen=>{
       const gs = list.filter(g=>g._alav===cen).sort((a,b)=>(b.crc_out||0)-(a.crc_out||0));
-      return `<div style="flex:0 0 268px;background:#F8F6FC;border-radius:12px;padding:10px">
+      return `<div class="kcol" style="flex:0 0 268px;min-width:268px;background:#F8F6FC;border-radius:12px;padding:10px;scroll-snap-align:start">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
           <span style="width:8px;height:8px;border-radius:50%;background:${COR_CENARIO[cen]}"></span>
           <div style="font-size:11.5px;font-weight:800;color:var(--lev-purple-d);line-height:1.2;flex:1">${cen}</div>

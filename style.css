@@ -172,6 +172,16 @@ th[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:130%;left
 .kcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:7px;cursor:pointer;transition:.12s}
 .kcard:hover{border-color:#CFC0E6;box-shadow:0 2px 8px rgba(91,45,142,.1)}
 
+
+/* kanban no celular: rola na horizontal, colunas mais estreitas */
+@media(max-width:820px){
+  .kboard{gap:9px !important;padding-bottom:14px !important}
+  .kcol{flex:0 0 82vw !important;min-width:82vw !important}
+  .kboard::after{content:"";flex:0 0 8px}
+  /* dica de rolagem */
+  .kboard{position:relative}
+}
+
 /* ===== DIRECIONAMENTOS ===== */
 .dirgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:11px}
 .dircard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
