@@ -546,13 +546,13 @@ function semaforoHTML(farol){
     ["B",["B1","B2","B3"]],
     ["A",["A1"]]
   ];
-  return `<div class="trilha" style="display:flex;flex-wrap:nowrap;align-items:flex-start;gap:4px;padding:10px 2px 6px;height:56px;overflow:visible">` + grupos.map(([letra,lista])=>{
+  return `<div class="trilha" style="display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:space-evenly;gap:0;padding:10px 2px 4px;width:100%">` + grupos.map(([letra,lista])=>{
     const luzes = lista.map(n=>{
       const i = ORDEM_LUZ.indexOf(n);
       const on = i===idx;
       return `<div class="luz ${n[0].toLowerCase()} ${on?"on":""}"></div>`;
     }).join("");
-    return `<div class="grupo" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-right:9px"><div class="luzes" style="display:flex;align-items:center;gap:5px">${luzes}</div><div class="lbl">${letra}</div></div>`;
+    return `<div class="grupo" style="display:flex;flex-direction:column;align-items:center;gap:6px"><div class="luzes" style="display:flex;align-items:center;gap:5px">${luzes}</div><div class="lbl">${letra}</div></div>`;
   }).join("") + `</div>`;
 }
 
@@ -637,7 +637,7 @@ function viewGC(){
 
   <div class="ind5" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
     ${blocos}
-    <div class="semafarobloco" style="grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;height:170px">
+    <div class="semafarobloco" style="grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column">
       <div class="cab">
         <div>
           <div class="nm">SEMÁFORO DO SCORE MB</div>
@@ -689,6 +689,7 @@ function viewGC(){
       </div>
     </div>
   </div>
+  ${painelAlavancagem(g)}
   ${gcCardHtml(g)}
   <div class="panel" style="margin-top:14px"><h3>Leitura do ciclo</h3>
     <div class="ps">resultado consolidado do mês — sem média</div>
@@ -1320,61 +1321,64 @@ function abreIndModal(html, largura){
   m.innerHTML = `<div class="gcm" style="max-width:${largura||760}px" onclick="event.stopPropagation()">${html}</div>`;
 }
 
-/* ---- 1. FUNIL DE RECORRÊNCIA ---- */
+/* ---- 1. DISTRIBUIÇÃO DE RECORRÊNCIA (NP → R6) ----
+   Definição do Leo: faixas EXCLUSIVAS de meses consecutivos de produção,
+   fechadas no mês anterior (outubro). NP = novo producente (só o mês). */
 function abrirFunilR6(nomeGC){
   const f = (typeof FUNIL !== "undefined" && FUNIL.funil) ? FUNIL.funil[nomeGC] : null;
-  if(!f){ abreIndModal(`<div class="gcm-body"><div class="mini">Sem dados de funil para ${esc(nomeGC)}.</div></div>`); return; }
-  const etapas = [
-    {k:"pac", rot:"PAC", desc:"produziu em outubro", cor:"#5B2D8E"},
-    {k:"r2",  rot:"R2",  desc:"produziu em 2 dos últimos 2 meses", cor:"#6B3D9E"},
-    {k:"r3",  rot:"R3",  desc:"produziu em 3 dos últimos 3 meses", cor:"#7B4DAE"},
-    {k:"r4",  rot:"R4",  desc:"produziu em 4 dos últimos 4 meses", cor:"#8B5DBE"},
-    {k:"r5",  rot:"R5",  desc:"produziu em 5 dos últimos 5 meses", cor:"#9B6DCE"},
-    {k:"r6",  rot:"R6",  desc:"produziu em 6 dos últimos 6 meses", cor:"#2E7D4F"}
+  if(!f){ abreIndModal(`<div class="gcm-body"><div class="mini">Sem dados de recorrência para ${esc(nomeGC)}.</div></div>`); return; }
+
+  const faixas = [
+    {k:"np", rot:"NP", cor:"#7A7186", desc:"novo producente — só outubro"},
+    {k:"r2", rot:"R2", cor:"#8E2D5B", desc:"set e out (2 meses)"},
+    {k:"r3", rot:"R3", cor:"#7B4DAE", desc:"ago, set e out"},
+    {k:"r4", rot:"R4", cor:"#6B3D9E", desc:"jul a out"},
+    {k:"r5", rot:"R5", cor:"#5B2D8E", desc:"jun a out"},
+    {k:"r6", rot:"R6", cor:"#2E7D4F", desc:"mai a out — 6+ meses"}
   ];
-  const base = f.pac || 1;
-  const alt = 232;
-  const perdaPct = f.pac ? ((f.pac - f.r6)/f.pac*100) : 0;
+  const pac = f.pac || 1;
+  const alt = 200;
+  const pctR6 = (f.r6/pac*100);
 
   abreIndModal(`
     <div class="gcm-head">
       <div>
-        <div style="font-size:16px;font-weight:800;color:var(--lev-purple-d)">Funil de recorrência — ${esc(nomeGC)}</div>
-        <div class="mini">cada etapa é mais exigente que a anterior: o parceiro precisa produzir em todos os meses da janela</div>
+        <div style="font-size:16px;font-weight:800;color:var(--lev-purple-d)">Recorrência — ${esc(nomeGC)}</div>
+        <div class="mini">meses consecutivos de produção, fechados em <b>outubro</b> · cada parceiro aparece em uma única faixa</div>
       </div>
       <button onclick="fecharIndModal()" style="background:none;border:0;font-size:22px;color:var(--mut);cursor:pointer">✕</button>
     </div>
     <div class="gcm-body">
-      <div style="display:flex;align-items:flex-end;gap:6px;height:${alt+40}px;padding:10px 0 0">
-        ${etapas.map((e,i)=>{
+      <div style="display:flex;align-items:flex-end;gap:7px;height:${alt+46}px;padding:10px 0 0">
+        ${faixas.map(e=>{
           const v = f[e.k] || 0;
-          const h = Math.max(10, (v/base) * alt);
-          const prox = etapas[i+1];
-          const perdeu = prox ? v - (f[prox.k]||0) : 0;
+          const h = Math.max(8, (v/pac) * alt);
           return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-            <div style="font-size:15px;font-weight:800;color:${e.cor};margin-bottom:3px">${v}</div>
-            ${prox?`<div style="font-size:9px;color:var(--lev-red);font-weight:700;margin-bottom:2px">${perdeu>0?"−"+perdeu:""}</div>`:`<div style="height:12px"></div>`}
-            <div style="width:100%;height:${h}px;background:${e.cor};border-radius:6px 6px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;transition:height .25s">
-              <span style="font-size:10px;font-weight:800;color:#fff">${e.rot}</span>
-            </div>
+            <div style="font-size:15px;font-weight:800;color:${e.cor};margin-bottom:2px">${v}</div>
+            <div style="font-size:9px;color:var(--mut);font-weight:700;margin-bottom:4px">${(v/pac*100).toFixed(0)}%</div>
+            <div style="width:100%;height:${h}px;background:${e.cor};border-radius:6px 6px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px">
+              <span style="font-size:10.5px;font-weight:800;color:#fff">${e.rot}</span></div>
+            <div style="font-size:8px;color:var(--mut);text-align:center;line-height:1.25;margin-top:4px;min-height:22px">${e.desc}</div>
           </div>`;
         }).join("")}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:12px">
-        ${etapas.map(e=>`<div style="text-align:center;background:var(--bg);border-radius:8px;padding:7px 4px">
-          <div style="font-size:10px;font-weight:800;color:${e.cor}">${e.rot}</div>
-          <div class="mini" style="font-size:8.5px;line-height:1.3">${e.desc}</div></div>`).join("")}
-      </div>
-      <div style="margin-top:14px;padding:12px 14px;background:linear-gradient(90deg,#E2F2E8,#F5FBF7);border:1px solid #CFE7D7;border-radius:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+
+      <div style="margin-top:14px;padding:12px 14px;background:linear-gradient(90deg,#E2F2E8,#F5FBF7);border:1px solid #CFE7D7;border-radius:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div>
           <div class="mini" style="color:#3D7A57;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Parceiros em R6</div>
           <div style="font-size:30px;font-weight:800;color:var(--green);line-height:1">${f.r6}</div>
         </div>
-        <div style="flex:1;min-width:180px">
-          <div class="mini" style="color:#3D7A57;line-height:1.6">de <b>${f.pac}</b> parceiros ativos no mês ·
-            <b>${(f.r6/base*100).toFixed(0)}%</b> da carteira é recorrente<br>
-            <span style="color:var(--lev-red)">${perdaPct.toFixed(0)}% da base ativa não chega ao R6</span></div>
+        <div style="flex:1;min-width:190px">
+          <div class="mini" style="color:#3D7A57;line-height:1.7">de <b>${f.pac}</b> parceiros ativos em outubro ·
+            <b>${pctR6.toFixed(0)}%</b> da carteira é R6<br>
+            <span style="color:var(--lev-red)">${(100-pctR6).toFixed(0)}% ainda não chegou a 6 meses seguidos</span></div>
         </div>
+      </div>
+
+      <div style="margin-top:10px;font-size:11px;color:var(--mut);line-height:1.7">
+        <b>Como ler:</b> as faixas são exclusivas e somam a carteira ativa (${f.pac} parceiros).
+        NP + R2 + R3 + R4 + R5 + R6 = ${f.np+f.r2+f.r3+f.r4+f.r5+f.r6}.
+        O PPC trabalha com fechamento: a régua é sempre a produção até o mês anterior ao corrente.
       </div>
     </div>`);
 }
@@ -2421,7 +2425,7 @@ function gcAbaPpc(g){
       </div>`;
     }).join("")}
   </div>
-  <div class="semafarobloco" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px;height:170px">
+  <div class="semafarobloco" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px">
     <div class="cab">
       <div><div class="nm">SEMÁFORO DO SCORE MB</div><div class="gt">régua da Controladoria</div></div>
       <div class="pos">${farol||"—"}<small>farol</small></div>

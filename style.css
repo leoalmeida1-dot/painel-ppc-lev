@@ -269,7 +269,7 @@ th[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:130%;left
 .mini-lv i.f{background:currentColor;opacity:.85}
 
 /* ---- semáforo: ocupa 2 colunas ---- */
-.semafarobloco{grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-height:150px;overflow:visible}
+.semafarobloco{grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between}
 .semafarobloco .cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .semafarobloco .nm{font-size:10px;text-transform:uppercase;letter-spacing:.55px;color:var(--mut);font-weight:700}
 .semafarobloco .gt{font-size:9.5px;color:var(--mut);margin-top:3px}
@@ -277,12 +277,12 @@ th[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:130%;left
 .semafarobloco .pos small{display:block;font-size:9px;font-weight:600;color:var(--mut);letter-spacing:.4px;text-transform:uppercase;margin-top:2px}
 
 /* trilha de luzes (semáforo) */
-.trilha{display:flex;align-items:flex-start;justify-content:flex-start;gap:4px;margin:0;padding:10px 2px 4px;min-height:52px}
-.grupo{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;margin-right:9px}
-.grupo:last-child{margin-right:0}
+.trilha{display:flex;align-items:flex-start;justify-content:space-between;gap:0;margin:0;padding:14px 4px 6px;width:100%;box-sizing:border-box}
+.grupo{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1 1 0;min-width:0}
+
 .grupo .luzes{display:flex;align-items:center;gap:5px}
 .grupo .lbl{font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--mut)}
-.luz{width:24px;height:24px;border-radius:50%;flex-shrink:0;position:relative;
+.luz{width:26px;height:26px;border-radius:50%;flex-shrink:0;position:relative;
   box-shadow:inset 0 -2px 4px rgba(0,0,0,.12), inset 0 1px 2px rgba(255,255,255,.5);
   border:1px solid rgba(0,0,0,.05);transition:transform .18s, box-shadow .18s}
 /* apagadas: cor pálida, sem brilho */
@@ -404,7 +404,7 @@ th[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:130%;left
   .indc{min-height:auto;padding:12px 13px;border-radius:12px}
   .indc .vl{font-size:25px;margin-top:6px}
   .semafarobloco{grid-column:span 1 !important;padding:13px}
-  .trilha{justify-content:flex-start;padding:12px 0 8px;gap:1px}
+  .trilha{justify-content:space-between;padding:12px 2px 8px;gap:1px}
   .grupo .luzes{gap:5px}
   .luz{width:19px;height:19px}
   .luz.on{transform:scale(1.3)}
