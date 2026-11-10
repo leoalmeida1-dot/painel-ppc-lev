@@ -3,6 +3,7 @@
 const GCS = GCS_TODOS.filter(g => !g.fora_painel);
 
 
+
 document.getElementById("logoImg").src = ASSETS.logo;
 
 const state = {view:"painel", head:"", reg:"", nivel:"", ramp:"", tempo:"", sort:"pac", dir:-1};
@@ -151,7 +152,7 @@ function viewPainel(){
       <th data-k="nome">Gerente Comercial</th><th data-k="final" data-tip="Nível atual no PPC: D Geração · C Evolução · B Consolidação · A Consagração">Posição</th>
       <th>REC · PAC · CHURN · CRC · MB</th><th data-k="cad_out" data-tip="Cadastros de novos parceiros realizados no mês">Cad.</th><th data-k="meses_casa" data-tip="Tempo de casa em meses, contado da admissão">Casa</th>
       <th data-k="ramp">Rampagem</th><th data-k="pac" data-tip="Parceiros Ativos com produção no mês">PAC</th><th data-k="r6" data-tip="Recorrência: % da carteira que produziu em 6+ dos últimos meses">R6</th>
-      <th data-k="churn" data-tip="Churn médio dos últimos 6 meses (teto 20%)">Churn 6M</th><th data-k="farol" data-tip="Posição no Score de Margem Bruta, régua da Controladoria (D1 a A1)">Farol MB</th>
+      <th data-k="churn" data-tip="Churn médio dos últimos 3 meses (teto 20%) — a partir de 2027 passa a 6 meses">Churn 3M</th><th data-k="farol" data-tip="Posição no Score de Margem Bruta, régua da Controladoria (D1 a A1)">Farol MB</th>
       <th data-k="crc_live" data-tip="Produção do mês corrente puxada da API do Ploomes">CRC (Ploomes)</th><th data-k="trava" data-tip="Indicadores que ainda impedem a subida de nível">Trava p/ subir</th>
     </tr></thead><tbody>
     ${sortList(list).map(g=>`
@@ -459,8 +460,16 @@ function indicadores(g){
 
   /* REGRA DO PPC: PAC e R6 = último mês · CRC, CHURN e Score MB = média de 6 meses */
   const r6 = g.r6_out, pac = g.pac_out, ch = g.churn, crc = (g.crc_out||0)/1e6;
+  /* CRC exibido = média dos últimos JANELA meses (via FUNIL.serie3) */
+  const s3 = (typeof FUNIL!=="undefined" && FUNIL.serie3) ? FUNIL.serie3[g.nome] : null;
+  const crcMedia3 = s3 ? ((s3.agosto.producao + s3.setembro.producao + s3.outubro.producao)/3/1e6) : crc;
   const farol = (g.farol && g.farol!=="#DIV/0!") ? g.farol : farolDeScore(g.score);
   const cr = g.cresc || {};
+
+  /* CHURN exibido = média dos últimos JANELA meses */
+  const cs = g.churn_serie || {};
+  const chVals = ["ago","set","out"].map(k=>(cs[k]&&cs[k].churn!=null)?cs[k].churn:null).filter(v=>v!=null);
+  const chMedia = chVals.length ? chVals.reduce((a,b)=>a+b,0)/chVals.length : ch;
 
   const recAlvo = emRamp ? null : (prox ? PPC.rec[prox] : null);
   const pacAlvo = emRamp ? null : (prox ? PPC.pac[prox] : null);
@@ -470,7 +479,7 @@ function indicadores(g){
 
   const recOk = recAlvo==null ? null : (r6!=null && r6>=recAlvo);
   const pacOk = pacAlvo==null ? null : (pac!=null && pac>=pacAlvo);
-  const chOk  = ch==null ? null : ch < PPC.churnMax;
+  const chOk  = chMedia==null ? null : chMedia < PPC.churnMax;
   const crcOk = crcAlvo==null ? null : (crc>=crcAlvo);
   const idxA = ORDEM_LUZ.indexOf(farol), idxB = mbAlvo ? ORDEM_LUZ.indexOf(mbAlvo) : null;
   const mbOk  = (idxB==null || idxA<0) ? null : idxA>=idxB;
@@ -481,27 +490,33 @@ function indicadores(g){
     : null;
 
   return [
-    {k:"crc", nm:"CRC — PRODUÇÃO", sub:"produção vendida no mês (consolidado)",
-     val:crc, fmt:v=>v==null?"—":"R$ "+v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"<span class='un'>M</span>",
+    {k:"crc", nm:"CRC — PRODUÇÃO", sub:`média dos últimos ${JANELA} meses`,
+     val:crcMedia3, fmt:v=>v==null?"—":"R$ "+v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"<span class='un'>M</span>",
+     click: "abrirSerie3", clickArg: "producao",
      gat: crcAlvo==null?"sem gatilho na rampagem":`Gatilho ${alvoNome}: ≥ R$ ${crcAlvo.toLocaleString("pt-BR",{minimumFractionDigits:1})}M`,
      meta: crcAlvo==null?"foco: cadastros e positivações":`Meta ${alvoNome}: R$ ${crcAlvo.toLocaleString("pt-BR",{minimumFractionDigits:1})}M`,
      ok:crcOk, prog: crcAlvo ? Math.min(1,crc/crcAlvo) : null},
 
     {k:"pac", nm:"PAC — PARCEIROS ATIVOS", sub:"parceiros com produção no mês (consolidado)",
+     click: "abrirSerie3", clickArg: "pac",
      val:pac, fmt:v=>v==null?"—":v.toFixed(0),
      gat: pacAlvo==null?"sem gatilho na rampagem":`Gatilho ${alvoNome}: ≥ ${pacAlvo}`,
      meta: pacAlvo==null?"foco: cadastros e positivações":`Meta ${alvoNome}: ${pacAlvo}`,
      ok:pacOk, prog: pacAlvo&&pac!=null ? Math.min(1,pac/pacAlvo) : null},
 
-    {k:"churn", nm:"CHURN", sub:"média de 6 meses · teto < 20%",
-     val:ch, fmt:v=>v==null?"—":v.toFixed(1)+"<span class='un'>%</span>",
-     gat:`Média 6M · mês: ${g.churn_out!=null?g.churn_out.toFixed(1)+"%":"—"} · base ${g.churn_base||"—"}`,
-     meta: ch==null?"sem apuração":(ch<10?"metade do teto":ch<PPC.churnMax?"uso de "+(ch/PPC.churnMax*100).toFixed(0)+"% do teto":"acima do teto em "+(ch-PPC.churnMax).toFixed(1)+" p.p."),
-     ok:chOk, prog: ch!=null ? Math.min(1,ch/PPC.churnMax) : null,
+    {k:"churn", nm:"CHURN", sub:`média dos últimos ${JANELA} meses · teto < 20%`,
+     click: "abrirSerie3", clickArg: "churn",
+     val:chMedia, fmt:v=>v==null?"—":v.toFixed(1)+"<span class='un'>%</span>",
+     gat:`Média 3M · mês: ${g.churn_out!=null?g.churn_out.toFixed(1)+"%":"—"} · base ${g.churn_base||"—"}`,
+     meta: chMedia==null?"sem apuração":(chMedia<10?"metade do teto":chMedia<PPC.churnMax?"uso de "+(chMedia/PPC.churnMax*100).toFixed(0)+"% do teto":"acima do teto em "+(chMedia-PPC.churnMax).toFixed(1)+" p.p."),
+     ok:chOk, prog: chMedia!=null ? Math.min(1,chMedia/PPC.churnMax) : null,
      comp: g.churn_out!=null ? {rot:"mês", val:g.churn_out, cor:(g.churn_out>20?"var(--lev-red)":"var(--green)")} : null},
 
     {k:"rec", nm:"RECORRÊNCIA", sub:"R6 — producente nos últimos 6 meses",
      val:r6, fmt:v=>v==null?"—":v.toFixed(1)+"<span class='un'>%</span>",
+     extra: (function(){ const f=(typeof FUNIL!=="undefined"&&FUNIL.funil)?FUNIL.funil[g.nome]:null;
+              return f? `<b>${f.r6}</b> de <b>${f.pac}</b> parceiros em R6`:""; })(),
+     click: "abrirFunilR6",
      gat: recAlvo==null?"sem gatilho na rampagem":`Gatilho ${alvoNome}: ≥ ${recAlvo}%`,
      meta: recAlvo==null?"foco: cadastros e positivações":`Meta ${alvoNome}: ${recAlvo}%`,
      ok:recOk, prog: recAlvo&&r6!=null ? Math.min(1,r6/recAlvo) : null},
@@ -531,13 +546,13 @@ function semaforoHTML(farol){
     ["B",["B1","B2","B3"]],
     ["A",["A1"]]
   ];
-  return `<div class="trilha">` + grupos.map(([letra,lista])=>{
+  return `<div class="trilha" style="display:flex;flex-wrap:nowrap;align-items:flex-start;gap:4px;padding:10px 2px 6px;height:56px;overflow:visible">` + grupos.map(([letra,lista])=>{
     const luzes = lista.map(n=>{
       const i = ORDEM_LUZ.indexOf(n);
       const on = i===idx;
       return `<div class="luz ${n[0].toLowerCase()} ${on?"on":""}"></div>`;
     }).join("");
-    return `<div class="grupo"><div class="luzes">${luzes}</div><div class="lbl">${letra}</div></div>`;
+    return `<div class="grupo" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-right:9px"><div class="luzes" style="display:flex;align-items:center;gap:5px">${luzes}</div><div class="lbl">${letra}</div></div>`;
   }).join("") + `</div>`;
 }
 
@@ -547,6 +562,9 @@ function requisitosDestaque(g){
   const baseB = g.final==="B", baseA = g.final==="A";
   const elegivelBase = baseB || baseA;
   const r6 = g.r6_out, pac = g.pac_out, ch = g.churn, crc = (g.crc_out||0)/1e6;
+  /* CRC exibido = média dos últimos JANELA meses (via FUNIL.serie3) */
+  const s3 = (typeof FUNIL!=="undefined" && FUNIL.serie3) ? FUNIL.serie3[g.nome] : null;
+  const crcMedia3 = s3 ? ((s3.agosto.producao + s3.setembro.producao + s3.outubro.producao)/3/1e6) : crc;
   const farol = (g.farol && g.farol!=="#DIV/0!") ? g.farol : farolDeScore(g.score);
   const pacMin = baseB ? 70 : baseA ? 80 : 70;
   const crcMin = baseB ? 2.5 : baseA ? 3.5 : 2.5;
@@ -579,12 +597,17 @@ function viewGC(){
     const tx = d.ok===true ? (d.k==="churn"?"dentro do teto":"no gatilho")
              : d.ok===false ? (d.k==="churn"?"acima do teto":"abaixo")
              : "sem gatilho";
-    return `<div class="indc st-${st}">
+    const nomeJson = JSON.stringify(g.nome).replace(/"/g, "&quot;");
+    const clicavel = d.click
+      ? ' indclick" data-clk="'+d.click+'" data-gc="'+esc(g.nome)+'" data-arg="'+(d.clickArg||"")+'" title="Clique para ver o detalhe'
+      : "";
+    return `<div class="indc st-${st}${clicavel}">
       <div class="nm">${d.nm}</div><div class="gt">${d.gat}</div>
       <div class="vl">${d.fmt(d.val)}</div>
+      ${d.extra?`<div class="mini" style="margin-top:4px;color:var(--lev-purple);font-weight:600">${d.extra}</div>`:""}
       <div class="mt">${d.meta}</div>
       ${d.comp?`<div class="mini" style="margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">
-        média 6M <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
+        média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
       ${d.prog!=null?`<div class="mini-lv" style="color:${st==="ok"?"#2e7d4f":st==="no"?"#A63A50":"#E8913D"}">
         ${Array.from({length:10},(_,i)=>`<i class="${i < Math.round(d.prog*10)?"f":""}"></i>`).join("")}</div>`:""}
       <div class="foot"><span class="pill ${st}">${ic} ${tx}</span></div>
@@ -612,9 +635,9 @@ function viewGC(){
     </div>
   </div>
 
-  <div class="ind5">
+  <div class="ind5" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
     ${blocos}
-    <div class="semafarobloco">
+    <div class="semafarobloco" style="grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;height:170px">
       <div class="cab">
         <div>
           <div class="nm">SEMÁFORO DO SCORE MB</div>
@@ -867,7 +890,7 @@ function dirGcCards(list){
           <td><div class="mini">
             <b>PAC</b> ${g.pac_out!=null?g.pac_out.toFixed(0):"—"} ·
             <b>R6</b> ${g.r6_out!=null?g.r6_out.toFixed(0)+"%":"—"} ·
-            <b>Churn 6M</b> ${g.churn!=null?g.churn.toFixed(0)+"%":"—"} ·
+            <b>Churn</b> ${g.churn!=null?g.churn.toFixed(0)+"%":"—"} ·
             <b>Cad.</b> ${g.cad_out?g.cad_out.toFixed(0):"—"}
             ${g._pub?` · <span style="color:var(--lev-purple);font-weight:700">${g._pub} parceiros a acionar</span>`:""}
             ${g._p_chu?` · <span style="color:var(--lev-red);font-weight:700">${g._p_chu} a reconquistar</span>`:""}
@@ -1098,6 +1121,10 @@ const CAMPOS = [
 
 
 /* ============ CONSTANTES DO PPC ============ */
+/* Janela das médias: 2026 usa 3 meses; a partir de 2027 passa a 6 meses. */
+const ANO_JANELA = (new Date()).getFullYear();
+const JANELA = ANO_JANELA >= 2027 ? 6 : 3;
+const JANELA_ROT = JANELA + "M";          /* rótulo curto: "3M" / "6M" */
 const PPC = {
   rec: {C:20,  B:50,  A:70,  AB:80},
   pac: {C:25,  B:40,  A:60,  AB:70},
@@ -1217,7 +1244,7 @@ function render(){
     const prim = secoesVisiveis()[0];
     if(prim) state.view = prim.k;
   }
-  if(state.view==="gc"){ const a = gcAtual(); if(a) gcSel = a.nome; }
+  if(state.view==="gc"){ const a = gcAtual(); if(a) gcSel = a.nome; if(gcAba==="ppc") gcAba="esforco"; }
   const t = TITLES[state.view] || ["PPC Lev",""];
   el("vtitle").textContent = t[0];
   el("vsub").textContent = t[1];
@@ -1237,6 +1264,12 @@ function render(){
       [["pac","PAC"],["r6","R6"],["churn","Churn"],["crc_live","CRC Ploomes"],["cad_out","Cadastros"],["meses_casa","Tempo de casa"],["trava","Travas"],["nome","Nome"]]
       .map(([k,l])=>`<button class="${state.sort===k?'on':''}" onclick="setSort('${k}')">${l}</button>`).join("");
   }
+  document.querySelectorAll(".indc.indclick").forEach(c=>{
+    c.onclick = function(){
+      const fn = window[this.dataset.clk];
+      if(typeof fn === "function") fn(this.dataset.gc, this.dataset.arg);
+    };
+  });
   document.querySelectorAll("aside nav button, .mnav button").forEach(b=>b.classList.toggle("on", b.dataset.v===state.view));
   if(state.view==="dir") ligarFiltrosDir();
   aplicaVisibilidade();
@@ -1261,6 +1294,159 @@ window.addEventListener("hashchange", ()=>{
 
 
 
+
+
+/* ============ POPUPS DOS INDICADORES ============ */
+/* Recorrência: funil PAC → R2 → R3 → R4 → R5 → R6
+   Produção / PAC / Churn: série dos últimos 3 meses + média */
+
+function fecharIndModal(){
+  const m = el("indModal");
+  if(m) m.style.display = "none";
+  document.body.style.overflow = "";
+}
+window.fecharIndModal = fecharIndModal;
+
+function abreIndModal(html, largura){
+  let m = el("indModal");
+  if(!m){
+    m = document.createElement("div");
+    m.id = "indModal"; m.className = "gcm-back";
+    m.onclick = e => { if(e.target===m) fecharIndModal(); };
+    document.body.appendChild(m);
+  }
+  m.style.display = "flex";
+  document.body.style.overflow = "hidden";
+  m.innerHTML = `<div class="gcm" style="max-width:${largura||760}px" onclick="event.stopPropagation()">${html}</div>`;
+}
+
+/* ---- 1. FUNIL DE RECORRÊNCIA ---- */
+function abrirFunilR6(nomeGC){
+  const f = (typeof FUNIL !== "undefined" && FUNIL.funil) ? FUNIL.funil[nomeGC] : null;
+  if(!f){ abreIndModal(`<div class="gcm-body"><div class="mini">Sem dados de funil para ${esc(nomeGC)}.</div></div>`); return; }
+  const etapas = [
+    {k:"pac", rot:"PAC", desc:"produziu em outubro", cor:"#5B2D8E"},
+    {k:"r2",  rot:"R2",  desc:"produziu em 2 dos últimos 2 meses", cor:"#6B3D9E"},
+    {k:"r3",  rot:"R3",  desc:"produziu em 3 dos últimos 3 meses", cor:"#7B4DAE"},
+    {k:"r4",  rot:"R4",  desc:"produziu em 4 dos últimos 4 meses", cor:"#8B5DBE"},
+    {k:"r5",  rot:"R5",  desc:"produziu em 5 dos últimos 5 meses", cor:"#9B6DCE"},
+    {k:"r6",  rot:"R6",  desc:"produziu em 6 dos últimos 6 meses", cor:"#2E7D4F"}
+  ];
+  const base = f.pac || 1;
+  const alt = 232;
+  const perdaPct = f.pac ? ((f.pac - f.r6)/f.pac*100) : 0;
+
+  abreIndModal(`
+    <div class="gcm-head">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--lev-purple-d)">Funil de recorrência — ${esc(nomeGC)}</div>
+        <div class="mini">cada etapa é mais exigente que a anterior: o parceiro precisa produzir em todos os meses da janela</div>
+      </div>
+      <button onclick="fecharIndModal()" style="background:none;border:0;font-size:22px;color:var(--mut);cursor:pointer">✕</button>
+    </div>
+    <div class="gcm-body">
+      <div style="display:flex;align-items:flex-end;gap:6px;height:${alt+40}px;padding:10px 0 0">
+        ${etapas.map((e,i)=>{
+          const v = f[e.k] || 0;
+          const h = Math.max(10, (v/base) * alt);
+          const prox = etapas[i+1];
+          const perdeu = prox ? v - (f[prox.k]||0) : 0;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+            <div style="font-size:15px;font-weight:800;color:${e.cor};margin-bottom:3px">${v}</div>
+            ${prox?`<div style="font-size:9px;color:var(--lev-red);font-weight:700;margin-bottom:2px">${perdeu>0?"−"+perdeu:""}</div>`:`<div style="height:12px"></div>`}
+            <div style="width:100%;height:${h}px;background:${e.cor};border-radius:6px 6px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;transition:height .25s">
+              <span style="font-size:10px;font-weight:800;color:#fff">${e.rot}</span>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:12px">
+        ${etapas.map(e=>`<div style="text-align:center;background:var(--bg);border-radius:8px;padding:7px 4px">
+          <div style="font-size:10px;font-weight:800;color:${e.cor}">${e.rot}</div>
+          <div class="mini" style="font-size:8.5px;line-height:1.3">${e.desc}</div></div>`).join("")}
+      </div>
+      <div style="margin-top:14px;padding:12px 14px;background:linear-gradient(90deg,#E2F2E8,#F5FBF7);border:1px solid #CFE7D7;border-radius:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div>
+          <div class="mini" style="color:#3D7A57;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Parceiros em R6</div>
+          <div style="font-size:30px;font-weight:800;color:var(--green);line-height:1">${f.r6}</div>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div class="mini" style="color:#3D7A57;line-height:1.6">de <b>${f.pac}</b> parceiros ativos no mês ·
+            <b>${(f.r6/base*100).toFixed(0)}%</b> da carteira é recorrente<br>
+            <span style="color:var(--lev-red)">${perdaPct.toFixed(0)}% da base ativa não chega ao R6</span></div>
+        </div>
+      </div>
+    </div>`);
+}
+window.abrirFunilR6 = abrirFunilR6;
+
+/* ---- 2. SÉRIE DE 3 MESES (produção / PAC / churn) ---- */
+function abrirSerie3(nomeGC, tipo){
+  const g = GCS.find(x=>x.nome===nomeGC);
+  if(!g) return;
+  const s3 = (typeof FUNIL !== "undefined" && FUNIL.serie3) ? FUNIL.serie3[nomeGC] : null;
+  if(!s3){ abreIndModal(`<div class="gcm-body"><div class="mini">Sem série para ${esc(nomeGC)}.</div></div>`); return; }
+
+  const meses = [["agosto","ago"],["setembro","set"],["outubro","out"]];
+  let vals = [], rot = "", cor = "", fmtV = v=>v, mediaLbl = "";
+
+  if(tipo==="producao"){
+    vals = meses.map(([m])=>s3[m].producao);
+    rot = "Produção (CRC)"; cor = "#5B2D8E"; fmtV = v => "R$ " + fmtN(v/1e6*1e6/1e6*1) + "M";
+    fmtV = v => "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}) + "M";
+  } else if(tipo==="pac"){
+    vals = meses.map(([m])=>s3[m].pac);
+    rot = "PAC — parceiros ativos"; cor = "#2E7D4F"; fmtV = v => fmtN(v);
+  } else {
+    // churn: usa o churn_serie já calculado
+    const cs = g.churn_serie || {};
+    vals = meses.map(([m,ab])=>(cs[ab]&&cs[ab].churn!=null)?cs[ab].churn:0);
+    rot = "Churn"; cor = "#A63A50"; fmtV = v => v.toFixed(1)+"%";
+  }
+
+  const media = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const max = Math.max(...vals, 1);
+  const calculaMedia = (tipo!=="pac");
+
+  abreIndModal(`
+    <div class="gcm-head">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--lev-purple-d)">${rot} — ${esc(nomeGC)}</div>
+        <div class="mini">${calculaMedia?"média dos últimos 3 meses (janela de 2026)":"valor do mês — PAC não usa média"}</div>
+      </div>
+      <button onclick="fecharIndModal()" style="background:none;border:0;font-size:22px;color:var(--mut);cursor:pointer">✕</button>
+    </div>
+    <div class="gcm-body">
+      <div style="display:flex;align-items:flex-end;gap:14px;height:210px;padding:8px 0 0">
+        ${vals.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+          <div style="font-size:13px;font-weight:800;color:${cor};margin-bottom:4px">${fmtV(v)}</div>
+          <div style="width:100%;max-width:110px;height:${Math.max(12,(v/max)*160)}px;background:${i===2?cor:"#C9B6DE"};border-radius:7px 7px 0 0"></div>
+          <div style="font-size:10.5px;color:var(--mut);font-weight:700;margin-top:6px">${meses[i][1]}</div>
+        </div>`).join("")}
+      </div>
+
+      ${calculaMedia?`<div style="margin-top:16px;padding:13px 15px;background:#F3EDFA;border:1px solid #E0D4F0;border-radius:10px">
+        <div class="mini" style="color:var(--lev-purple);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Como a média é calculada</div>
+        <div style="font-size:12.5px;color:var(--lev-purple-d);line-height:1.9">
+          (${valoresTexto(vals, fmtV)}) ÷ 3 =
+          <b style="font-size:16px;color:${cor}">${fmtV(media)}</b>
+        </div>
+        <div class="mini" style="margin-top:6px">É este valor que aparece no indicador do painel.</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+        <div class="paycard" style="flex:1;min-width:130px"><div class="l">Média 3M</div><div class="v" style="font-size:20px">${fmtV(media)}</div></div>
+        <div class="paycard ${vals[2]>=vals[0]?"g":"r"}" style="flex:1;min-width:130px"><div class="l">Tendência</div>
+          <div class="v" style="font-size:17px">${vals[2]>=vals[0]?"subindo":"caindo"}</div>
+          <div class="d">${fmtV(vals[0])} → ${fmtV(vals[2])}</div></div>
+      </div>`:`
+      <div style="margin-top:16px;padding:13px 15px;background:#EDF7F0;border:1px solid #CFE7D7;border-radius:10px">
+        <div class="mini" style="color:#3D7A57;line-height:1.7">PAC é a <b>quantidade de parceiros com produção no mês</b> — não se calcula média aqui.
+        O valor do indicador é o de <b>outubro</b>: <b style="font-size:15px">${fmtN(vals[2])}</b> parceiros.</div>
+      </div>`}
+    </div>`);
+}
+function valoresTexto(vals, fmt){ return vals.map(v=>fmt(v)).join(" + "); }
+window.abrirSerie3 = abrirSerie3;
 
 /* ============ DIRECIONAMENTOS: filtro por GC + visão tabela/kanban ============ */
 let dirVisao = "tabela";     /* "tabela" | "kanban" */
@@ -1638,6 +1824,12 @@ function renderModalGC(){
 
       <div class="gcm-body">${corpo}</div>
     </div>`;
+  m.querySelectorAll(".indc.indclick").forEach(c=>{
+    c.onclick = function(){
+      const fn = window[this.dataset.clk];
+      if(typeof fn === "function") fn(this.dataset.gc, this.dataset.arg);
+    };
+  });
 }
 
 /* ---- motor de respostas do chat ---- */
@@ -2211,29 +2403,30 @@ function gcAbaPpc(g){
   const farol = (g.farol && g.farol!=="#DIV/0!") ? g.farol : farolDeScore(g.score);
   return `
   ${painelAlavancagem(g)}
-  <div class="ind5" style="margin-bottom:12px;margin-top:14px">
+  <div class="ind5" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;margin-top:14px">
     ${inds.map(d=>{
       const st = d.ok===true?"ok":d.ok===false?"no":"mid";
       const ic = d.ok===true?"✓":d.ok===false?"✕":"—";
       const tx = d.ok===true ? (d.k==="churn"?"dentro do teto":"no gatilho")
                : d.ok===false ? (d.k==="churn"?"acima do teto":"abaixo")
                : "sem gatilho";
-      return `<div class="indc st-${st}">
+      const cl2 = d.click ? ' indclick" data-clk="'+d.click+'" data-gc="'+esc(g.nome)+'" data-arg="'+(d.clickArg||"")+'" title="Clique para ver o detalhe' : "";
+      return `<div class="indc st-${st}${cl2}">
         <div class="nm">${d.nm}</div><div class="gt">${d.gat}</div>
         <div class="vl">${d.fmt(d.val)}</div>
         <div class="mt">${d.meta}</div>
       ${d.comp?`<div class="mini" style="margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">
-        média 6M <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
+        média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
         <div class="foot"><span class="pill ${st}">${ic} ${tx}</span></div>
       </div>`;
     }).join("")}
-    <div class="semafarobloco">
-      <div class="cab">
-        <div><div class="nm">SEMÁFORO DO SCORE MB</div><div class="gt">régua da Controladoria</div></div>
-        <div class="pos">${farol||"—"}<small>farol</small></div>
-      </div>
-      <div style="margin-top:auto">${semaforoHTML(farol)}</div>
+  </div>
+  <div class="semafarobloco" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px;height:170px">
+    <div class="cab">
+      <div><div class="nm">SEMÁFORO DO SCORE MB</div><div class="gt">régua da Controladoria</div></div>
+      <div class="pos">${farol||"—"}<small>farol</small></div>
     </div>
+    <div>${semaforoHTML(farol)}</div>
   </div>`;
 }
 
