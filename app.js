@@ -3,6 +3,16 @@
 const GCS = GCS_TODOS.filter(g => !g.fora_painel);
 
 
+/* Janela das médias: 2026 usa 3 meses; a partir de 2027 passa a 6 meses. */
+const ANO_JANELA = (new Date()).getFullYear();
+const JANELA = ANO_JANELA >= 2027 ? 6 : 3;
+const JANELA_ROT = JANELA + "M";          /* rótulo curto: "3M" / "6M" */
+const PPC = {
+  rec: {C:20,  B:50,  A:70,  AB:80},
+  pac: {C:25,  B:40,  A:60,  AB:70},
+  crc: {C:1.0, B:2.0, A:3.0, AB:2.5},
+  churnMax: 20
+};
 
 document.getElementById("logoImg").src = ASSETS.logo;
 
@@ -27,7 +37,8 @@ function trava(g){
   if(g.pac_nivel !== "A" && g.pac_nivel !== "B") f.push("PAC");
   if(g.churn == null || g.churn > 20) f.push("Churn");
   if(g.crc_nivel !== "A" && g.crc_nivel !== "B") f.push("CRC");
-  if(g.mb_nivel !== "A" && g.mb_nivel !== "B") f.push("Score MB");
+  /* sem farol apurado (ex.: duplo papel) não trava — só trava se tiver farol abaixo do gatilho */
+  if(g.farol && g.mb_nivel !== "A" && g.mb_nivel !== "B") f.push("Score MB");
   return f;
 }
 function filtered(){
@@ -57,7 +68,7 @@ function kpis(list){
     <div class="kpi"><div class="t">Nível B</div><div class="v">${b}</div><div class="d">título até janeiro</div></div>
     <div class="kpi o"><div class="t">Rampagem ativa</div><div class="v">${rA}</div><div class="d">nível D até o 6º mês</div></div>
     <div class="kpi o"><div class="t">Nível D — M6</div><div class="v">${rM6}</div><div class="d">passou do 6º mês, segue em D</div></div>
-    <div class="kpi"><div class="t">Churn 6M &gt; 20%</div><div class="v" style="color:var(--lev-red)">${chA}</div><div class="d">${(chA/n*100).toFixed(0)}% do filtro</div></div>
+    <div class="kpi"><div class="t">Churn acima do teto</div><div class="v" style="color:var(--lev-red)">${chA}</div><div class="d">${(chA/n*100).toFixed(0)}% do filtro</div></div>
     <div class="kpi g"><div class="t">CRC ao vivo (Ploomes)</div><div class="v" style="font-size:17px">${brlM(crcLive)}</div><div class="d">mês corrente · sync diário</div></div>`;
 }
 function filtraRamp(v){
@@ -157,7 +168,7 @@ function viewPainel(){
     </tr></thead><tbody>
     ${sortList(list).map(g=>`
       <tr class="${g.final==='D'&&g.rampagem&&g.rampagem.status==='vencida'&&g.pac>=40?'hl':''}">
-        <td><b class="nm-link" onclick="abrirModalGC('${esc(g.nome).replace(/'/g,"\\'")}')" title="Abrir detalhes">${esc(g.nome)}</b> <img src="${ASSETS["esc_"+g.final.toLowerCase()+"_circ"]||""}" style="width:22px;height:22px;vertical-align:-6px;border-radius:50%" alt="${g.final}"><div class="mini">${esc(g.cargo)} · ${esc(g.regional)}</div></td>
+        <td><b class="nm-link" onclick="abrirModalGC('${esc(g.nome).replace(/'/g,"\\'")}')" title="Abrir detalhes">${esc(g.nome)}</b> <img src="${ASSETS["esc_"+g.final.toLowerCase()+"_circ"]||""}" style="width:22px;height:22px;vertical-align:-6px;border-radius:50%" alt="${g.final}"><div class="mini">${esc(g.cargo)} · ${esc(g.regional)}${g.papel&&g.papel.includes("+")?' · <b title="${esc(g.nota_papel||"")}" style="color:var(--lev-purple);font-weight:700">GG</b>':""}</div></td>
         <td><span class="bdg nv${g.final}">${g.final}</span></td>
         <td>${critCell(g)}</td>
         <td class="num">${g.cad_out!=null&&g.cad_out>0?"<b>"+g.cad_out.toFixed(0)+"</b>":"—"}</td><td class="num">${g.meses_casa!=null?g.meses_casa+"m":"—"}</td>
@@ -165,7 +176,7 @@ function viewPainel(){
         <td class="num"><b>${g.pac.toFixed(0)}</b></td>
         <td class="num"><div class="bar ${g.r6<50?'hot':''}"><i style="width:${Math.min(g.r6||0,100)}%"></i></div><div class="mini num">${g.r6!=null?g.r6.toFixed(0)+"%":"—"}</div></td>
         <td class="num" style="color:${g.churn>20?'var(--lev-red)':'inherit'}">${g.churn!=null?g.churn.toFixed(0)+"%":"—"}</td>
-        <td>${g.farol?`<span class="bdg f${g.farol}">${g.farol}</span>`:`<span class="bdg fNa">—</span>`}</td>
+        <td>${g.farol?`<span class="bdg f${g.farol}">${g.farol}</span>${deltaFarol(g)}`:`<span class="bdg fNa">—</span>`}</td>
         <td class="num">${g.crc_ploomes?brlM(g.crc_ploomes.mes_atual):"—"}</td>
         <td>${g._trava.length?g._trava.map(t=>`<span class="gap">${t}</span>`).join(" · "):`<span class="gap ok">✓</span>`}</td>
       </tr>`).join("")}
@@ -177,7 +188,7 @@ function viewPainel(){
             <div class="nm">${esc(g.nome)}<div class="mini">${esc(g.cargo)} · ${esc(g.regional)}</div></div>
             <div class="badges">
               <span class="bdg nv${g.final}">${g.final}</span>
-              ${g.farol?`<span class="bdg f${g.farol}">${g.farol}</span>`:""}
+              ${g.farol?`<span class="bdg f${g.farol}">${g.farol}</span>${deltaFarol(g)}`:""}
             </div>
           </div>
           <div class="gr">
@@ -213,7 +224,7 @@ function kpisHtml(list){
     <div class="kpi"><div class="t">Nível B</div><div class="v">${b}</div><div class="d">título até janeiro</div></div>
     <div class="kpi o"><div class="t">Rampagem ativa</div><div class="v">${rA}</div><div class="d">nível D até o 6º mês</div></div>
     <div class="kpi o"><div class="t">Nível D — M6</div><div class="v">${rM6}</div><div class="d">passou do 6º mês, segue em D</div></div>
-    <div class="kpi"><div class="t">Churn 6M &gt; 20%</div><div class="v" style="color:var(--lev-red)">${chA}</div><div class="d">${(chA/n*100).toFixed(0)}% do filtro</div></div>
+    <div class="kpi"><div class="t">Churn acima do teto</div><div class="v" style="color:var(--lev-red)">${chA}</div><div class="d">${(chA/n*100).toFixed(0)}% do filtro</div></div>
     <div class="kpi g"><div class="t">CRC ao vivo (Ploomes)</div><div class="v" style="font-size:17px">${brlM(crcLive)}</div><div class="d">mês corrente · sync diário</div></div>`;
 }
 function sortList(list){
@@ -481,8 +492,9 @@ function indicadores(g){
   const pacOk = pacAlvo==null ? null : (pac!=null && pac>=pacAlvo);
   const chOk  = chMedia==null ? null : chMedia < PPC.churnMax;
   const crcOk = crcAlvo==null ? null : (crc>=crcAlvo);
+  const semFarol = !farol;   /* duplo papel / não elegível: Controladoria não apura */
   const idxA = ORDEM_LUZ.indexOf(farol), idxB = mbAlvo ? ORDEM_LUZ.indexOf(mbAlvo) : null;
-  const mbOk  = (idxB==null || idxA<0) ? null : idxA>=idxB;
+  const mbOk  = semFarol ? null : (idxB==null || idxA<0) ? null : idxA>=idxB;
 
   /* Nível C: bônus é crescimento de PAC e CRC ≥15% no MÊS + churn <20% */
   const cresceu = (lvl==="C" && !emRamp)
@@ -521,10 +533,11 @@ function indicadores(g){
      meta: recAlvo==null?"foco: cadastros e positivações":`Meta ${alvoNome}: ${recAlvo}%`,
      ok:recOk, prog: recAlvo&&r6!=null ? Math.min(1,r6/recAlvo) : null},
 
-    {k:"mb", nm:"SCORE MB", sub:"pontuação da margem bruta dos parceiros",
+    {k:"mb", nm:"SCORE MB", sub: g.papel && g.papel.includes("+") ? "score da carteira comercial (também é gerente de gestão)" : "pontuação da margem bruta dos parceiros",
      val:g.score, fmt:v=>v==null?"—":v.toFixed(1)+"<span class='un'>/100</span>",
      gat: mbAlvo==null?"sem gatilho na rampagem":`Gatilho ${alvoNome}: ${mbAlvo}`,
      meta: farol?`Farol: ${farol}`:"sem farol",
+     comp: (g.score!=null && g.score_ant!=null) ? {rot:"mês anterior", val:g.score_ant, cor:null, farolAnt:g.farol_ant} : null,
      ok:mbOk, farol:farol, prog: g.score!=null ? Math.min(1,g.score/100) : null}
   ];
 }
@@ -607,7 +620,11 @@ function viewGC(){
       ${d.extra?`<div class="mini" style="margin-top:4px;color:var(--lev-purple);font-weight:600">${d.extra}</div>`:""}
       <div class="mt">${d.meta}</div>
       ${d.comp?`<div class="mini" style="margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">
-        média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
+        ${d.comp.farolAnt!=null
+          ? (function(){ const up = ORDEM_LUZ.indexOf(farol) > ORDEM_LUZ.indexOf(d.comp.farolAnt);
+              const same = ORDEM_LUZ.indexOf(farol) === ORDEM_LUZ.indexOf(d.comp.farolAnt);
+              return `out: <b>${d.comp.farolAnt}</b> → <b style="color:${same?"var(--mut)":up?"var(--green)":"var(--lev-red)"}">${farol}</b> <span style="color:var(--mut)">(${d.comp.val!=null?d.comp.val.toFixed(0):"—"} → ${d.val!=null?d.val.toFixed(0):"—"} pts)</span>`; })()
+          : `média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b>`}</div>`:""}
       ${d.prog!=null?`<div class="mini-lv" style="color:${st==="ok"?"#2e7d4f":st==="no"?"#A63A50":"#E8913D"}">
         ${Array.from({length:10},(_,i)=>`<i class="${i < Math.round(d.prog*10)?"f":""}"></i>`).join("")}</div>`:""}
       <div class="foot"><span class="pill ${st}">${ic} ${tx}</span></div>
@@ -1109,7 +1126,7 @@ function brl(v){ return v==null?"—":"R$ "+fmtBR(v/1e6,2)+"M"; }
 const CAMPOS = [
   {k:"pac_out", nm:"PAC", aliases:["pac","parceiros ativos","parceiro ativo","positivados"]},
   {k:"r6_out",  nm:"R6 (recorrência)", aliases:["r6","recorrencia","recorrência"]},
-  {k:"churn", nm:"Churn (média 6M)", aliases:["churn"]},
+  {k:"churn", nm:`Churn (média ${JANELA}M)`, aliases:["churn"]},
   {k:"crc_out", nm:"Produção (CRC)", aliases:["crc","producao","produção","volume"]},
   {k:"cad_out", nm:"Cadastros", aliases:["cadastro","cadastros","cad"]},
   {k:"score",   nm:"Score MB", aliases:["score","margem","mb","score mb"]},
@@ -1121,24 +1138,24 @@ const CAMPOS = [
 
 
 
-/* ============ CONSTANTES DO PPC ============ */
-/* Janela das médias: 2026 usa 3 meses; a partir de 2027 passa a 6 meses. */
-const ANO_JANELA = (new Date()).getFullYear();
-const JANELA = ANO_JANELA >= 2027 ? 6 : 3;
-const JANELA_ROT = JANELA + "M";          /* rótulo curto: "3M" / "6M" */
-const PPC = {
-  rec: {C:20,  B:50,  A:70,  AB:80},
-  pac: {C:25,  B:40,  A:60,  AB:70},
-  crc: {C:1.0, B:2.0, A:3.0, AB:2.5},
-  churnMax: 20
-};
+
 const NIVEIS = ["D","C","B","A"];          /* AB+ não é nível: é posição de destaque mensal */
 const NIVEL_LONGO = { D:"Geração", C:"Evolução", B:"Consolidação", A:"Consagração" };
 const DESTAQUE = "Extraordinário";         /* posição de destaque mensal (antigo AB+) */
 /* formatação numérica usada em várias views */
 function fmtN(v){ return v==null?"—":Number(v).toLocaleString("pt-BR",{maximumFractionDigits:0}); }
-const ORDEM_IND = ["crc","pac","churn","rec"];   /* Score MB vive no semáforo */
+const ORDEM_IND = ["crc","pac","churn","rec","mb"];
 const ORDEM_LUZ = ["D1","D2","D3","C1","C2","C3","B1","B2","B3","A1"];
+/* seta sutil da variação do farol de margem (out vs mês anterior) */
+function deltaFarol(g){
+  if(!g.farol_ant || !g.farol) return "";
+  const a = ORDEM_LUZ.indexOf(g.farol_ant), b = ORDEM_LUZ.indexOf(g.farol);
+  if(a < 0 || b < 0 || a === b) return "";
+  const subiu = b > a;
+  return `<span title="mês anterior: ${g.farol_ant} (${g.score_ant!=null?g.score_ant.toFixed(0):"—"} pts) → out: ${g.farol} (${g.score!=null?g.score.toFixed(0):"—"} pts)"
+    style="font-size:9px;font-weight:800;margin-left:2px;color:${subiu?"var(--green)":"var(--lev-red)"}">${subiu?"▲":"▼"}</span>`;
+}
+
 const FAIXA_MB = [
   ["D1",0,25],["D2",25,45],["D3",45,55],
   ["C1",55,60],["C2",60,65],["C3",65,70],
@@ -1178,7 +1195,7 @@ window.abrirMais = abrirMais; window.fecharMais = fecharMais;
 
 /* ============ NÚCLEO: TÍTULOS, FILTROS E RENDER ============ */
 const TITLES = {
-  painel: ["Painel Geral — PPC Lev","Posição consolidada (jan/jul) · PAC e R6 do último mês · CRC, Churn e Score MB na média 6M"],
+  painel: ["Painel Geral — PPC Lev",`Posição consolidada · PAC e R6 do último mês · CRC e Churn na média ${JANELA}M · Score MB de outubro (Controladoria)`],
   bonus: ["Acompanhamento de Bônus de Performance","Quem atingiu e quem não atingiu os critérios do mês, por nível"],
   dinamica: ["Acompanhamento de Bônus","Mesmo critério, desconsiderando parceiros com menos de 90 dias na carteira que já produziam antes"],
   gc: ["Análise por GC","Leitura individual: indicadores do PPC, esforço no Ploomes e desempenho de 6 meses"],
@@ -1275,7 +1292,11 @@ function render(){
   if(state.view==="dir") ligarFiltrosDir();
   aplicaVisibilidade();
   const sel = el("selPerfil");
-  if(sel && sel.value !== PERFIS.ativo) sel.value = PERFIS.ativo;
+  if(sel){
+    const ops = PERFIS.lista.map(pf=>`<option value="${pf.id}" ${pf.id===PERFIS.ativo?"selected":""}>${esc(pf.nm)}</option>`).join("");
+    if(sel.innerHTML !== ops) sel.innerHTML = ops;
+    sel.value = PERFIS.ativo;
+  }
 }
 
 function setSort(k){ state.sort = k; state.dir = (state.dir===-1?1:-1); render(); }
@@ -1917,7 +1938,7 @@ function respostaChat(pergunta){
     const b = gc.bonus||{};
     return {txt:[`**${gc.nome}**`,
       `Nível **${gc.final}** · ${gc.regional} · head ${gc.head.split(" ")[0]} · ${gc.meses_casa} meses de casa`,"",
-      `• PAC: **${fmtBR(gc.pac_out)}**`,`• R6: **${pct(gc.r6_out)}**`,`• Churn (média 6M): **${pct(gc.churn)}**`,
+      `• PAC: **${fmtBR(gc.pac_out)}**`,`• R6: **${pct(gc.r6_out)}**`,`• Churn (média "+JANELA+"M): **"+pct(gc.churn)+"**`,
       `• Produção: **${brl(gc.crc_out)}**`,`• Cadastros: **${fmtBR(gc.cad_out)}**`,
       `• Score MB: **${gc.score!=null?fmtBR(gc.score,1):"—"}** (farol ${gc.farol||"—"})`,"",
       `**Cenário:** ${gc._alav||"—"}`,
@@ -2420,7 +2441,11 @@ function gcAbaPpc(g){
         <div class="vl">${d.fmt(d.val)}</div>
         <div class="mt">${d.meta}</div>
       ${d.comp?`<div class="mini" style="margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">
-        média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b></div>`:""}
+        ${d.comp.farolAnt!=null
+          ? (function(){ const up = ORDEM_LUZ.indexOf(farol) > ORDEM_LUZ.indexOf(d.comp.farolAnt);
+              const same = ORDEM_LUZ.indexOf(farol) === ORDEM_LUZ.indexOf(d.comp.farolAnt);
+              return `out: <b>${d.comp.farolAnt}</b> → <b style="color:${same?"var(--mut)":up?"var(--green)":"var(--lev-red)"}">${farol}</b> <span style="color:var(--mut)">(${d.comp.val!=null?d.comp.val.toFixed(0):"—"} → ${d.val!=null?d.val.toFixed(0):"—"} pts)</span>`; })()
+          : `média ${JANELA_ROT} <b>${d.val==null?"—":d.val.toFixed(1)+"%"}</b> · este mês <b style="color:${d.comp.cor}">${d.comp.val.toFixed(1)}%</b>`}</div>`:""}
         <div class="foot"><span class="pill ${st}">${ic} ${tx}</span></div>
       </div>`;
     }).join("")}

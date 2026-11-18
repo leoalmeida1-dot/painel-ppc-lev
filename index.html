@@ -50,9 +50,7 @@
       <div class="sub" id="vsub" style="flex:1;min-width:220px"></div>
       <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px">
         <span style="font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Perfil</span>
-        <select id="selPerfil" onchange="setPerfilAtivo(this.value)" style="border:0;background:none;font-size:12px;font-weight:700;color:var(--lev-purple-d);cursor:pointer;outline:none;font-family:inherit">
-          ${PERFIS.lista.map(pf=>`<option value="${pf.id}" ${pf.id===PERFIS.ativo?"selected":""}>${pf.nm}</option>`).join("")}
-        </select>
+        <select id="selPerfil" onchange="setPerfilAtivo(this.value)" style="border:0;background:none;font-size:12px;font-weight:700;color:var(--lev-purple-d);cursor:pointer;outline:none;font-family:inherit"></select>
       </div>
     </div>
     <div class="fbar-top" id="fbarTop">
