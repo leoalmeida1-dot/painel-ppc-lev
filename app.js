@@ -64,7 +64,7 @@ function kpis(list){
   const chA = list.filter(g=>g.churn!=null&&g.churn>20).length;
   const crcLive = list.reduce((a,g)=>a+((g.crc_ploomes||{}).mes_atual||0),0);
   el("kpis").innerHTML = `
-    <div class="kpi"><div class="t">GCs no filtro</div><div class="v">${list.length}</div><div class="d">de 57 consolidados</div></div>
+    <div class="kpi"><div class="t">GCs no filtro</div><div class="v">${list.length}</div><div class="d">de ${GCS.length} no painel</div></div>
     <div class="kpi"><div class="t">Nível B</div><div class="v">${b}</div><div class="d">título até janeiro</div></div>
     <div class="kpi o"><div class="t">Rampagem ativa</div><div class="v">${rA}</div><div class="d">nível D até o 6º mês</div></div>
     <div class="kpi o"><div class="t">Nível D — M6</div><div class="v">${rM6}</div><div class="d">passou do 6º mês, segue em D</div></div>
@@ -220,7 +220,7 @@ function kpisHtml(list){
   const chA = list.filter(g=>g.churn!=null&&g.churn>20).length;
   const crcLive = list.reduce((a,g)=>a+((g.crc_ploomes||{}).mes_atual||0),0);
   return `
-    <div class="kpi"><div class="t">GCs no filtro</div><div class="v">${list.length}</div><div class="d">de 57 consolidados</div></div>
+    <div class="kpi"><div class="t">GCs no filtro</div><div class="v">${list.length}</div><div class="d">de ${GCS.length} no painel</div></div>
     <div class="kpi"><div class="t">Nível B</div><div class="v">${b}</div><div class="d">título até janeiro</div></div>
     <div class="kpi o"><div class="t">Rampagem ativa</div><div class="v">${rA}</div><div class="d">nível D até o 6º mês</div></div>
     <div class="kpi o"><div class="t">Nível D — M6</div><div class="v">${rM6}</div><div class="d">passou do 6º mês, segue em D</div></div>
